@@ -1,84 +1,513 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Username to ID Converter</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body {
-      font-family: sans-serif;
-      max-width: 600px;
-      margin: auto;
-      padding: 20px;
-    }
-    textarea {
-      width: 100%;
-      height: 150px;
-      font-size: 14px;
-    }
-    table {
-      margin-top: 20px;
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      padding: 8px;
-      border: 1px solid #ddd;
-      text-align: left;
-    }
-    button {
-      margin-top: 10px;
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User ID Scraper</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .input-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .input-section:hover {
+            border-color: #4CAF50;
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        .button {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(76, 175, 80, 0.3);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .progress-container {
+            margin: 20px 0;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 30px;
+            position: relative;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .result-section {
+            background: #fff;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border-left: 5px solid #4CAF50;
+        }
+
+        .result-section.failed {
+            border-left-color: #f44336;
+        }
+
+        .result-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .result-section h3::before {
+            content: '✓';
+            background: #4CAF50;
+            color: white;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .result-section.failed h3::before {
+            content: '✗';
+            background: #f44336;
+        }
+
+        .result-list {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .result-item {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .status {
+            text-align: center;
+            padding: 20px;
+            font-weight: 600;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .status.processing {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 2px solid #bbdefb;
+        }
+
+        .status.complete {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 2px solid #c8e6c9;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 2px solid #ffcdd2;
+        }
+
+        @media (max-width: 768px) {
+            .results {
+                grid-template-columns: 1fr;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 User ID Scraper</h1>
+            <p>Extract user IDs from usernames using API endpoint</p>
+        </div>
+        
+        <div class="content">
+            <div class="input-section">
+                <div class="form-group">
+                    <label for="corsProxy">CORS Proxy URL:</label>
+                    <input type="text" id="corsProxy" value="https://api.allorigins.win/raw?url=" 
+                           placeholder="Enter CORS proxy URL (e.g., https://api.allorigins.win/raw?url=)">
+                </div>
+                
+                <div class="form-group">
+                    <label for="usernames">Usernames (one per line):</label>
+                    <textarea id="usernames" placeholder="caustic&#10;tomfc&#10;username3&#10;username4">caustic
+tomfc</textarea>
+                </div>
+                
+                <button class="button" onclick="startScraping()">
+                    <span id="buttonText">Start Scraping</span>
+                </button>
+            </div>
+            
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar">0%</div>
+            </div>
+            
+            <div id="status"></div>
+            
+            <div class="results" id="results" style="display: none;">
+                <div class="result-section">
+                    <h3>Successful Entries</h3>
+                    <div class="result-list" id="successList"></div>
+                </div>
+                
+                <div class="result-section failed">
+                    <h3>Failed Entries</h3>
+                    <div class="result-list" id="failedList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-  <h1>Username → User ID</h1>
+    <script>
+        const API_ENDPOINT_URL = "https://api.real.vg/user/{}";
+        const HEADERS = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Connection': 'keep-alive',
+        };
 
-  <p>Enter usernames (one per line):</p>
-  <textarea id="userInput" placeholder="@tomfc\ntomfc2\n@john_doe"></textarea><br>
-  <button onclick="fetchIDs()">Fetch IDs</button>
+        let isScrapingActive = false;
+        let successfulEntries = [];
+        let failedUsernames = [];
 
-  <table id="resultTable" style="display: none;">
-    <thead>
-      <tr><th>Username</th><th>User ID</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-
-  <script>
-    const WORKER_URL = "https://id-fetcher.tommyek67.workers.dev/"; 
-
-    async function fetchIDs() {
-      const input = document.getElementById("userInput").value;
-      const usernames = input.split("\n")
-        .map(u => u.trim().replace(/^@/, ''))
-        .filter(u => u.length > 0);
-
-      const table = document.getElementById("resultTable");
-      const tbody = table.querySelector("tbody");
-      tbody.innerHTML = '';
-      table.style.display = 'none';
-
-      for (const username of usernames) {
-        try {
-          const res = await fetch(`${WORKER_URL}/user/${username}`);
-          if (!res.ok) throw new Error("Not found");
-          const data = await res.json();
-          const row = `<tr><td>${username}</td><td>${data.id}</td></tr>`;
-          tbody.insertAdjacentHTML('beforeend', row);
-        } catch (err) {
-          const row = `<tr><td>${username}</td><td style="color:red;">Error</td></tr>`;
-          tbody.insertAdjacentHTML('beforeend', row);
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
         }
-      }
 
-      table.style.display = 'table';
-    }
-  </script>
+        function updateProgress(current, total) {
+            const percentage = Math.round((current / total) * 100);
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = percentage + '%';
+            progressBar.textContent = percentage + '%';
+        }
 
+        function updateStatus(message, type = 'processing') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = type === 'processing' ? `<span class="spinner"></span>${message}` : message;
+        }
+
+        function displayResults() {
+            const resultsDiv = document.getElementById('results');
+            const successList = document.getElementById('successList');
+            const failedList = document.getElementById('failedList');
+
+            successList.innerHTML = '';
+            failedList.innerHTML = '';
+
+            if (successfulEntries.length > 0) {
+                successfulEntries.forEach(entry => {
+                    const div = document.createElement('div');
+                    div.className = 'result-item';
+                    div.textContent = entry;
+                    successList.appendChild(div);
+                });
+            } else {
+                successList.innerHTML = '<div class="result-item">No successful entries</div>';
+            }
+
+            if (failedUsernames.length > 0) {
+                failedUsernames.forEach(username => {
+                    const div = document.createElement('div');
+                    div.className = 'result-item';
+                    div.textContent = username;
+                    failedList.appendChild(div);
+                });
+            } else {
+                failedList.innerHTML = '<div class="result-item">No failed entries</div>';
+            }
+
+            resultsDiv.style.display = 'grid';
+        }
+
+        async function fetchUserData(username, corsProxy) {
+            try {
+                const fullUrl = API_ENDPOINT_URL.replace('{}', username);
+                const proxyUrl = corsProxy + encodeURIComponent(fullUrl);
+                
+                const response = await fetch(proxyUrl, {
+                    method: 'GET',
+                    headers: HEADERS
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const userObject = data?.user;
+
+                if (userObject && userObject.id) {
+                    return { success: true, id: userObject.id };
+                } else {
+                    return { success: false, error: 'No user ID found' };
+                }
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+
+        async function startScraping() {
+            if (isScrapingActive) return;
+
+            const corsProxy = document.getElementById('corsProxy').value.trim();
+            const usernamesText = document.getElementById('usernames').value.trim();
+            const button = document.querySelector('.button');
+            const buttonText = document.getElementById('buttonText');
+            const progressContainer = document.getElementById('progressContainer');
+
+            if (!corsProxy) {
+                updateStatus('Please enter a CORS proxy URL', 'error');
+                return;
+            }
+
+            if (!usernamesText) {
+                updateStatus('Please enter at least one username', 'error');
+                return;
+            }
+
+            const usernames = usernamesText.split('\n').map(u => u.trim()).filter(u => u);
+            
+            if (usernames.length === 0) {
+                updateStatus('Please enter valid usernames', 'error');
+                return;
+            }
+
+            // Reset arrays
+            successfulEntries = [];
+            failedUsernames = [];
+
+            // Update UI
+            isScrapingActive = true;
+            button.disabled = true;
+            buttonText.textContent = 'Scraping...';
+            progressContainer.style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+
+            updateStatus(`Starting to scrape ${usernames.length} usernames...`);
+
+            for (let i = 0; i < usernames.length; i++) {
+                const username = usernames[i];
+                updateStatus(`Processing: ${username} (${i + 1}/${usernames.length})`);
+                updateProgress(i, usernames.length);
+
+                try {
+                    const result = await fetchUserData(username, corsProxy);
+                    
+                    if (result.success) {
+                        successfulEntries.push(`${username},${result.id}`);
+                    } else {
+                        failedUsernames.push(username);
+                    }
+                } catch (error) {
+                    failedUsernames.push(username);
+                }
+
+                // Random delay between 500ms and 1500ms
+                const delay = Math.random() * 1000 + 500;
+                await sleep(delay);
+            }
+
+            // Complete
+            updateProgress(usernames.length, usernames.length);
+            updateStatus(`Scraping complete! Processed ${usernames.length} usernames. 
+                         Successful: ${successfulEntries.length}, Failed: ${failedUsernames.length}`, 'complete');
+
+            // Reset button
+            isScrapingActive = false;
+            button.disabled = false;
+            buttonText.textContent = 'Start Scraping';
+
+            // Display results
+            displayResults();
+
+            // Hide progress bar after a delay
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+            }, 2000);
+        }
+
+        // Allow Enter key to start scraping when focused on textarea
+        document.getElementById('usernames').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                startScraping();
+            }
+        });
+    </script>
 </body>
 </html>
