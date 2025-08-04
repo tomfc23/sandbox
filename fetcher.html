@@ -108,6 +108,23 @@
             box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
         }
 
+        select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
         .button {
             background: linear-gradient(135deg, #4CAF50, #45a049);
             color: white;
@@ -296,9 +313,16 @@
         <div class="content">
             <div class="input-section">
                 <div class="form-group">
-                    <label for="corsProxy">CORS Proxy URL:</label>
-                    <input type="text" id="corsProxy" value="https://api.allorigins.win/raw?url=" 
-                           placeholder="Enter CORS proxy URL (e.g., https://api.allorigins.win/raw?url=)">
+                    <label for="corsProxy">CORS Proxy:</label>
+                    <select id="corsProxy">
+                        <option value="https://cors-anywhere.herokuapp.com/">cors-anywhere.herokuapp.com</option>
+                        <option value="https://api.codetabs.com/v1/proxy?quest=">codetabs.com</option>
+                        <option value="https://thingproxy.freeboard.io/fetch/">thingproxy.freeboard.io</option>
+                        <option value="https://cors.bridged.cc/">cors.bridged.cc</option>
+                        <option value="custom">Custom URL</option>
+                    </select>
+                    <input type="text" id="customProxy" style="display: none; margin-top: 10px;" 
+                           placeholder="Enter custom CORS proxy URL">
                 </div>
                 
                 <div class="form-group">
@@ -396,45 +420,87 @@ tomfc</textarea>
         }
 
         async function fetchUserData(username, corsProxy) {
-            try {
-                const fullUrl = API_ENDPOINT_URL.replace('{}', username);
-                const proxyUrl = corsProxy + encodeURIComponent(fullUrl);
-                
-                const response = await fetch(proxyUrl, {
-                    method: 'GET',
-                    headers: HEADERS
-                });
+            const fullUrl = API_ENDPOINT_URL.replace('{}', username);
+            
+            // Try multiple proxy approaches
+            const proxyAttempts = [
+                // Method 1: Simple proxy prepend
+                corsProxy + fullUrl,
+                // Method 2: URL encoded
+                corsProxy + encodeURIComponent(fullUrl)
+            ];
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+            for (let i = 0; i < proxyAttempts.length; i++) {
+                try {
+                    const proxyUrl = proxyAttempts[i];
+                    console.log(`Attempting: ${proxyUrl}`);
+                    
+                    const response = await fetch(proxyUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        },
+                        mode: 'cors',
+                        cache: 'no-cache'
+                    });
+
+                    if (!response.ok) {
+                        console.log(`Attempt ${i + 1} failed with status: ${response.status}`);
+                        continue;
+                    }
+
+                    const text = await response.text();
+                    console.log(`Response text: ${text.substring(0, 200)}...`);
+                    
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        // Some proxies return the data wrapped
+                        console.log('Failed to parse JSON directly, checking for wrapped response');
+                        continue;
+                    }
+
+                    const userObject = data?.user;
+                    if (userObject && userObject.id) {
+                        return { success: true, id: userObject.id };
+                    } else {
+                        console.log('User object or ID not found in response');
+                        return { success: false, error: 'No user ID found in response' };
+                    }
+                } catch (error) {
+                    console.log(`Attempt ${i + 1} error:`, error.message);
+                    if (i === proxyAttempts.length - 1) {
+                        return { success: false, error: error.message };
+                    }
                 }
-
-                const data = await response.json();
-                const userObject = data?.user;
-
-                if (userObject && userObject.id) {
-                    return { success: true, id: userObject.id };
-                } else {
-                    return { success: false, error: 'No user ID found' };
-                }
-            } catch (error) {
-                return { success: false, error: error.message };
             }
+            
+            return { success: false, error: 'All proxy attempts failed' };
         }
 
         async function startScraping() {
             if (isScrapingActive) return;
 
-            const corsProxy = document.getElementById('corsProxy').value.trim();
+            const corsProxySelect = document.getElementById('corsProxy');
+            const customProxyInput = document.getElementById('customProxy');
+            let corsProxy;
+            
+            if (corsProxySelect.value === 'custom') {
+                corsProxy = customProxyInput.value.trim();
+                if (!corsProxy) {
+                    updateStatus('Please enter a custom CORS proxy URL', 'error');
+                    return;
+                }
+            } else {
+                corsProxy = corsProxySelect.value;
+            }
+
             const usernamesText = document.getElementById('usernames').value.trim();
             const button = document.querySelector('.button');
             const buttonText = document.getElementById('buttonText');
             const progressContainer = document.getElementById('progressContainer');
-
-            if (!corsProxy) {
-                updateStatus('Please enter a CORS proxy URL', 'error');
-                return;
-            }
 
             if (!usernamesText) {
                 updateStatus('Please enter at least one username', 'error');
@@ -459,7 +525,7 @@ tomfc</textarea>
             progressContainer.style.display = 'block';
             document.getElementById('results').style.display = 'none';
 
-            updateStatus(`Starting to scrape ${usernames.length} usernames...`);
+            updateStatus(`Starting to scrape ${usernames.length} usernames using ${corsProxySelect.options[corsProxySelect.selectedIndex].text}...`);
 
             for (let i = 0; i < usernames.length; i++) {
                 const username = usernames[i];
@@ -471,11 +537,14 @@ tomfc</textarea>
                     
                     if (result.success) {
                         successfulEntries.push(`${username},${result.id}`);
+                        console.log(`✓ ${username}: ${result.id}`);
                     } else {
                         failedUsernames.push(username);
+                        console.log(`✗ ${username}: ${result.error}`);
                     }
                 } catch (error) {
                     failedUsernames.push(username);
+                    console.log(`✗ ${username}: ${error.message}`);
                 }
 
                 // Random delay between 500ms and 1500ms
@@ -501,6 +570,17 @@ tomfc</textarea>
                 progressContainer.style.display = 'none';
             }, 2000);
         }
+
+        // Handle proxy selection change
+        document.getElementById('corsProxy').addEventListener('change', function() {
+            const customInput = document.getElementById('customProxy');
+            if (this.value === 'custom') {
+                customInput.style.display = 'block';
+                customInput.focus();
+            } else {
+                customInput.style.display = 'none';
+            }
+        });
 
         // Allow Enter key to start scraping when focused on textarea
         document.getElementById('usernames').addEventListener('keydown', function(e) {
