@@ -5,64 +5,208 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User ID Scraper</title>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        textarea {
+            min-height: 100px;
+            font-family: monospace;
+        }
+
+        button {
+            background: #007cba;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #005a87;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .progress {
+            margin: 20px 0;
+            background: #f0f0f0;
+            border-radius: 4px;
+            height: 20px;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #007cba;
+            border-radius: 4px;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+            font-size: 12px;
+        }
+
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .status.processing {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+        }
+
+        .status.complete {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+        }
+
+        .status.error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+        }
+
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .copy-button {
+            background: #28a745;
+            margin-bottom: 10px;
+        }
+
+        .copy-button:hover {
+            background: #218838;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 8px 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background: #f5f5f5;
+            font-weight: bold;
+        }
+
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+
+        .failed-list {
+            margin-top: 20px;
+        }
+
+        .failed-list h3 {
+            color: #d32f2f;
+            margin-bottom: 10px;
+        }
+
+        .failed-list ul {
+            background: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 0;
+        }
+
+        .failed-list li {
+            margin: 5px 0;
+        }
+
+        small {
+            color: #666;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🔍 User ID Scraper</h1>
-            <p>Extract user IDs from usernames using API endpoint</p>
-        </div>
+    <h1>User ID Scraper</h1>
+    
+    <div class="form-group">
+        <label for="workerUrl">Cloudflare Worker URL:</label>
+        <input type="text" id="workerUrl" placeholder="https://your-worker.your-subdomain.workers.dev">
+        <small>Deploy the Cloudflare Worker and enter your worker URL above</small>
+    </div>
+    
+    <div class="form-group">
+        <label for="usernames">Usernames (one per line):</label>
+        <textarea id="usernames" placeholder="caustic&#10;tomfc&#10;username3">caustic
+tomfc</textarea>
+    </div>
+    
+    <button onclick="startScraping()">
+        <span id="buttonText">Start Scraping</span>
+    </button>
+    
+    <div class="progress" id="progressContainer">
+        <div class="progress-bar" id="progressBar">0%</div>
+    </div>
+    
+    <div id="status"></div>
+    
+    <div class="results" id="results">
+        <button class="copy-button" onclick="copyTableData()">Copy Table Data</button>
+        <table id="resultsTable">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>User ID</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+            </tbody>
+        </table>
         
-        <div class="content">
-            <div class="input-section">
-                
-                <div class="form-group">
-                    <label for="usernames">Usernames (one per line):</label>
-                    <textarea id="usernames" placeholder="username3&#10;username4"></textarea>
-                </div>
-                
-                <button class="button" onclick="startScraping()">
-                    <span id="buttonText">Start Scraping</span>
-                </button>
-            </div>
-            
-            <div class="progress-container" id="progressContainer">
-                <div class="progress-bar" id="progressBar">0%</div>
-            </div>
-            
-            <div id="status"></div>
-            
-            <div class="results" id="results" style="display: none;">
-                <div class="result-section">
-                    <h3>Successful Entries</h3>
-                    <div class="result-list" id="successList"></div>
-                </div>
-                
-                <div class="result-section failed">
-                    <h3>Failed Entries</h3>
-                    <div class="result-list" id="failedList"></div>
-                </div>
-            </div>
+        <div class="failed-list" id="failedSection" style="display: none;">
+            <h3>Failed Usernames</h3>
+            <ul id="failedList"></ul>
         </div>
     </div>
 
     <script>
-        const API_ENDPOINT_URL = "https://api.real.vg/user/{}";
-        const HEADERS = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Connection': 'keep-alive',
-        };
-
         let isScrapingActive = false;
         let successfulEntries = [];
         let failedUsernames = [];
-
-        function sleep(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
 
         function updateProgress(current, total) {
             const percentage = Math.round((current / total) * 100);
@@ -74,46 +218,69 @@
         function updateStatus(message, type = 'processing') {
             const statusDiv = document.getElementById('status');
             statusDiv.className = `status ${type}`;
-            statusDiv.innerHTML = type === 'processing' ? `<span class="spinner"></span>${message}` : message;
+            statusDiv.textContent = message;
         }
 
         function displayResults() {
             const resultsDiv = document.getElementById('results');
-            const successList = document.getElementById('successList');
+            const tableBody = document.getElementById('tableBody');
+            const failedSection = document.getElementById('failedSection');
             const failedList = document.getElementById('failedList');
 
-            successList.innerHTML = '';
+            // Clear previous results
+            tableBody.innerHTML = '';
             failedList.innerHTML = '';
 
-            if (successfulEntries.length > 0) {
-                successfulEntries.forEach(entry => {
-                    const div = document.createElement('div');
-                    div.className = 'result-item';
-                    div.textContent = entry;
-                    successList.appendChild(div);
-                });
-            } else {
-                successList.innerHTML = '<div class="result-item">No successful entries</div>';
-            }
+            // Populate success table
+            successfulEntries.forEach(entry => {
+                const [username, userId] = entry.split(',');
+                const row = tableBody.insertRow();
+                row.insertCell(0).textContent = username;
+                row.insertCell(1).textContent = userId;
+            });
 
+            // Show failed usernames if any
             if (failedUsernames.length > 0) {
                 failedUsernames.forEach(username => {
-                    const div = document.createElement('div');
-                    div.className = 'result-item';
-                    div.textContent = username;
-                    failedList.appendChild(div);
+                    const li = document.createElement('li');
+                    li.textContent = username;
+                    failedList.appendChild(li);
                 });
+                failedSection.style.display = 'block';
             } else {
-                failedList.innerHTML = '<div class="result-item">No failed entries</div>';
+                failedSection.style.display = 'none';
             }
 
-            resultsDiv.style.display = 'grid';
+            resultsDiv.style.display = 'block';
+        }
+
+        function copyTableData() {
+            let tableText = 'Username\tUser ID\n';
+            
+            successfulEntries.forEach(entry => {
+                const [username, userId] = entry.split(',');
+                tableText += `${username}\t${userId}\n`;
+            });
+
+            navigator.clipboard.writeText(tableText).then(() => {
+                const button = document.querySelector('.copy-button');
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.style.background = '#218838';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '#28a745';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert('Failed to copy to clipboard');
+            });
         }
 
         async function fetchUserData(username, workerUrl) {
             try {
                 const url = `${workerUrl}?username=${encodeURIComponent(username)}`;
-                console.log(`Fetching: ${url}`);
                 
                 const response = await fetch(url, {
                     method: 'GET',
@@ -131,9 +298,7 @@
                 }
 
                 const data = await response.json();
-                console.log(`Response for ${username}:`, data);
                 
-                // Check if there's an error in the response
                 if (data.error) {
                     return { success: false, error: data.error };
                 }
@@ -142,11 +307,9 @@
                 if (userObject && userObject.id) {
                     return { success: true, id: userObject.id };
                 } else {
-                    console.log('User object or ID not found in response:', data);
                     return { success: false, error: 'No user ID found in response' };
                 }
             } catch (error) {
-                console.log(`Error fetching ${username}:`, error.message);
                 return { success: false, error: error.message };
             }
         }
@@ -154,9 +317,9 @@
         async function startScraping() {
             if (isScrapingActive) return;
 
-            const workerUrl = "https://id-fetcher.tommyek67.workers.dev/";
+            const workerUrl = document.getElementById('workerUrl').value.trim();
             const usernamesText = document.getElementById('usernames').value.trim();
-            const button = document.querySelector('.button');
+            const button = document.querySelector('button');
             const buttonText = document.getElementById('buttonText');
             const progressContainer = document.getElementById('progressContainer');
 
@@ -165,7 +328,6 @@
                 return;
             }
 
-            // Basic URL validation
             try {
                 new URL(workerUrl);
             } catch (e) {
@@ -196,26 +358,19 @@
             progressContainer.style.display = 'block';
             document.getElementById('results').style.display = 'none';
 
-            updateStatus(`Starting to scrape ${usernames.length} usernames using Cloudflare Worker...`);
+            updateStatus(`Starting to scrape ${usernames.length} usernames...`);
 
             for (let i = 0; i < usernames.length; i++) {
                 const username = usernames[i];
                 updateStatus(`Processing: ${username} (${i + 1}/${usernames.length})`);
                 updateProgress(i, usernames.length);
 
-                try {
-                    const result = await fetchUserData(username, workerUrl);
-                    
-                    if (result.success) {
-                        successfulEntries.push(`${username},${result.id}`);
-                        console.log(`✓ ${username}: ${result.id}`);
-                    } else {
-                        failedUsernames.push(username);
-                        console.log(`✗ ${username}: ${result.error}`);
-                    }
-                } catch (error) {
+                const result = await fetchUserData(username, workerUrl);
+                
+                if (result.success) {
+                    successfulEntries.push(`${username},${result.id}`);
+                } else {
                     failedUsernames.push(username);
-                    console.log(`✗ ${username}: ${error.message}`);
                 }
 
                 // No delay - process as fast as possible
@@ -223,8 +378,7 @@
 
             // Complete
             updateProgress(usernames.length, usernames.length);
-            updateStatus(`Scraping complete! Processed ${usernames.length} usernames. 
-                         Successful: ${successfulEntries.length}, Failed: ${failedUsernames.length}`, 'complete');
+            updateStatus(`Complete! Successful: ${successfulEntries.length}, Failed: ${failedUsernames.length}`, 'complete');
 
             // Reset button
             isScrapingActive = false;
