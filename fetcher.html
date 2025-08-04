@@ -319,19 +319,10 @@
         
         <div class="content">
             <div class="input-section">
-                <div class="form-group">
-                    <label for="workerUrl">Cloudflare Worker URL:</label>
-                    <input type="text" id="workerUrl" value="" 
-                           placeholder="https://your-worker.your-subdomain.workers.dev">
-                    <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
-                        Deploy the Cloudflare Worker and enter your worker URL above
-                    </small>
-                </div>
                 
                 <div class="form-group">
                     <label for="usernames">Usernames (one per line):</label>
-                    <textarea id="usernames" placeholder="caustic&#10;tomfc&#10;username3&#10;username4">caustic
-tomfc</textarea>
+                    <textarea id="usernames" placeholder="caustic&#10;tomfc&#10;username3&#10;username4"></textarea>
                 </div>
                 
                 <button class="button" onclick="startScraping()">
@@ -466,7 +457,7 @@ tomfc</textarea>
         async function startScraping() {
             if (isScrapingActive) return;
 
-            const workerUrl = document.getElementById('workerUrl').value.trim();
+            const workerUrl = "https://id-fetcher.tommyek67.workers.dev/";
             const usernamesText = document.getElementById('usernames').value.trim();
             const button = document.querySelector('.button');
             const buttonText = document.getElementById('buttonText');
@@ -530,9 +521,7 @@ tomfc</textarea>
                     console.log(`✗ ${username}: ${error.message}`);
                 }
 
-                // Random delay between 500ms and 1500ms
-                const delay = Math.random() * 1000 + 500;
-                await sleep(delay);
+                // No delay - process as fast as possible
             }
 
             // Complete
@@ -548,10 +537,7 @@ tomfc</textarea>
             // Display results
             displayResults();
 
-            // Hide progress bar after a delay
-            setTimeout(() => {
-                progressContainer.style.display = 'none';
-            }, 2000);
+            // Hide progress bar immediately after completion
         }
 
         // Allow Enter key to start scraping when focused on textarea
