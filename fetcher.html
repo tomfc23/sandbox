@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>User ID Fetcher</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #1a1a1a;
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2em;
+    }
+
+    textarea {
+      width: 100%;
+      max-width: 500px;
+      height: 150px;
+      background: #2a2a2a;
+      color: white;
+      border: 1px solid #444;
+      padding: 1em;
+      font-size: 1em;
+      border-radius: 6px;
+    }
+
+    button {
+      margin-top: 1em;
+      padding: 0.5em 1.5em;
+      background-color: #4a90e2;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #357ab8;
+    }
+
+    table {
+      margin-top: 2em;
+      width: 100%;
+      max-width: 600px;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 0.75em;
+      border: 1px solid #333;
+      text-align: left;
+    }
+
+    th {
+      background: #333;
+    }
+
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <h1>Fetch Real.vg User IDs</h1>
+  <textarea id="userInput" placeholder="Enter usernames (e.g. @tomfc, realuser)"></textarea>
+  <br />
+  <button onclick="fetchUserIDs()">Fetch IDs</button>
+
+  <table id="resultsTable" hidden>
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>User ID</th>
+      </tr>
+    </thead>
+    <tbody id="resultsBody"></tbody>
+  </table>
+
+  <script>
+    async function fetchUserIDs() {
+      const input = document.getElementById("userInput").value;
+      const usernames = input
+        .split(/[\s,]+/)
+        .map(u => u.replace(/^@/, '').trim())
+        .filter(u => u.length > 0);
+
+      const resultsTable = document.getElementById("resultsTable");
+      const resultsBody = document.getElementById("resultsBody");
+      resultsBody.innerHTML = ""; // Clear previous results
+      resultsTable.hidden = true;
+
+      if (usernames.length === 0) return;
+
+      const fetchPromises = usernames.map(async username => {
+        try {
+          const response = await fetch(`https://api.real.vg/user/${username}`);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const data = await response.json();
+          const userId = data.user?.id ?? "Not found";
+
+          return { username, userId };
+        } catch (err) {
+          return { username, userId: `<span class="error">Error</span>` };
+        }
+      });
+
+      const results = await Promise.all(fetchPromises);
+
+      results.forEach(({ username, userId }) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${username}</td><td>${userId}</td>`;
+        resultsBody.appendChild(row);
+      });
+
+      resultsTable.hidden = false;
+    }
+  </script>
+</body>
+</html>
