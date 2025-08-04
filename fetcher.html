@@ -46,6 +46,13 @@
             font-size: 1.1em;
         }
 
+        small {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+            display: block;
+        }
+
         .content {
             padding: 40px;
         }
@@ -313,16 +320,12 @@
         <div class="content">
             <div class="input-section">
                 <div class="form-group">
-                    <label for="corsProxy">CORS Proxy:</label>
-                    <select id="corsProxy">
-                        <option value="https://cors-anywhere.herokuapp.com/">cors-anywhere.herokuapp.com</option>
-                        <option value="https://api.codetabs.com/v1/proxy?quest=">codetabs.com</option>
-                        <option value="https://thingproxy.freeboard.io/fetch/">thingproxy.freeboard.io</option>
-                        <option value="https://cors.bridged.cc/">cors.bridged.cc</option>
-                        <option value="custom">Custom URL</option>
-                    </select>
-                    <input type="text" id="customProxy" style="display: none; margin-top: 10px;" 
-                           placeholder="Enter custom CORS proxy URL">
+                    <label for="workerUrl">Cloudflare Worker URL:</label>
+                    <input type="text" id="workerUrl" value="" 
+                           placeholder="https://your-worker.your-subdomain.workers.dev">
+                    <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                        Deploy the Cloudflare Worker and enter your worker URL above
+                    </small>
                 </div>
                 
                 <div class="form-group">
@@ -419,88 +422,68 @@ tomfc</textarea>
             resultsDiv.style.display = 'grid';
         }
 
-        async function fetchUserData(username, corsProxy) {
-            const fullUrl = API_ENDPOINT_URL.replace('{}', username);
-            
-            // Try multiple proxy approaches
-            const proxyAttempts = [
-                // Method 1: Simple proxy prepend
-                corsProxy + fullUrl,
-                // Method 2: URL encoded
-                corsProxy + encodeURIComponent(fullUrl)
-            ];
+        async function fetchUserData(username, workerUrl) {
+            try {
+                const url = `${workerUrl}?username=${encodeURIComponent(username)}`;
+                console.log(`Fetching: ${url}`);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    mode: 'cors',
+                    cache: 'no-cache'
+                });
 
-            for (let i = 0; i < proxyAttempts.length; i++) {
-                try {
-                    const proxyUrl = proxyAttempts[i];
-                    console.log(`Attempting: ${proxyUrl}`);
-                    
-                    const response = await fetch(proxyUrl, {
-                        method: 'GET',
-                        headers: {
-                            'Accept': 'application/json',
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                        },
-                        mode: 'cors',
-                        cache: 'no-cache'
-                    });
-
-                    if (!response.ok) {
-                        console.log(`Attempt ${i + 1} failed with status: ${response.status}`);
-                        continue;
-                    }
-
-                    const text = await response.text();
-                    console.log(`Response text: ${text.substring(0, 200)}...`);
-                    
-                    let data;
-                    try {
-                        data = JSON.parse(text);
-                    } catch (e) {
-                        // Some proxies return the data wrapped
-                        console.log('Failed to parse JSON directly, checking for wrapped response');
-                        continue;
-                    }
-
-                    const userObject = data?.user;
-                    if (userObject && userObject.id) {
-                        return { success: true, id: userObject.id };
-                    } else {
-                        console.log('User object or ID not found in response');
-                        return { success: false, error: 'No user ID found in response' };
-                    }
-                } catch (error) {
-                    console.log(`Attempt ${i + 1} error:`, error.message);
-                    if (i === proxyAttempts.length - 1) {
-                        return { success: false, error: error.message };
-                    }
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
                 }
+
+                const data = await response.json();
+                console.log(`Response for ${username}:`, data);
+                
+                // Check if there's an error in the response
+                if (data.error) {
+                    return { success: false, error: data.error };
+                }
+
+                const userObject = data?.user;
+                if (userObject && userObject.id) {
+                    return { success: true, id: userObject.id };
+                } else {
+                    console.log('User object or ID not found in response:', data);
+                    return { success: false, error: 'No user ID found in response' };
+                }
+            } catch (error) {
+                console.log(`Error fetching ${username}:`, error.message);
+                return { success: false, error: error.message };
             }
-            
-            return { success: false, error: 'All proxy attempts failed' };
         }
 
         async function startScraping() {
             if (isScrapingActive) return;
 
-            const corsProxySelect = document.getElementById('corsProxy');
-            const customProxyInput = document.getElementById('customProxy');
-            let corsProxy;
-            
-            if (corsProxySelect.value === 'custom') {
-                corsProxy = customProxyInput.value.trim();
-                if (!corsProxy) {
-                    updateStatus('Please enter a custom CORS proxy URL', 'error');
-                    return;
-                }
-            } else {
-                corsProxy = corsProxySelect.value;
-            }
-
+            const workerUrl = document.getElementById('workerUrl').value.trim();
             const usernamesText = document.getElementById('usernames').value.trim();
             const button = document.querySelector('.button');
             const buttonText = document.getElementById('buttonText');
             const progressContainer = document.getElementById('progressContainer');
+
+            if (!workerUrl) {
+                updateStatus('Please enter your Cloudflare Worker URL', 'error');
+                return;
+            }
+
+            // Basic URL validation
+            try {
+                new URL(workerUrl);
+            } catch (e) {
+                updateStatus('Please enter a valid Cloudflare Worker URL', 'error');
+                return;
+            }
 
             if (!usernamesText) {
                 updateStatus('Please enter at least one username', 'error');
@@ -525,7 +508,7 @@ tomfc</textarea>
             progressContainer.style.display = 'block';
             document.getElementById('results').style.display = 'none';
 
-            updateStatus(`Starting to scrape ${usernames.length} usernames using ${corsProxySelect.options[corsProxySelect.selectedIndex].text}...`);
+            updateStatus(`Starting to scrape ${usernames.length} usernames using Cloudflare Worker...`);
 
             for (let i = 0; i < usernames.length; i++) {
                 const username = usernames[i];
@@ -533,7 +516,7 @@ tomfc</textarea>
                 updateProgress(i, usernames.length);
 
                 try {
-                    const result = await fetchUserData(username, corsProxy);
+                    const result = await fetchUserData(username, workerUrl);
                     
                     if (result.success) {
                         successfulEntries.push(`${username},${result.id}`);
@@ -570,17 +553,6 @@ tomfc</textarea>
                 progressContainer.style.display = 'none';
             }, 2000);
         }
-
-        // Handle proxy selection change
-        document.getElementById('corsProxy').addEventListener('change', function() {
-            const customInput = document.getElementById('customProxy');
-            if (this.value === 'custom') {
-                customInput.style.display = 'block';
-                customInput.focus();
-            } else {
-                customInput.style.display = 'none';
-            }
-        });
 
         // Allow Enter key to start scraping when focused on textarea
         document.getElementById('usernames').addEventListener('keydown', function(e) {
